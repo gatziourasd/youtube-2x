@@ -4,13 +4,9 @@ let playbackRate: number | null = null;
 let videoElm: HTMLVideoElement | null = null;
 let active = false;
 
-// const urlPattern =
-//   /https?:\/\/www\.youtube\.(com|de)\/watch\?v=[0-9A-Za-z_-]*.*&ab_channel=(?<channel>[0-9A-Za-z_-]+)/;
-  const urlPattern = /https?:\/\/www\.youtube\.(com|de)\/watch\?v=[0-9A-Za-z_-]*/;
+const urlPattern = /https?:\/\/www\.youtube\.(com|de)\/watch\?v=[0-9A-Za-z_-]*/;
 
 setInterval(() => {
-  // const channel = urlPattern.exec(window.location.href)?.groups?.channel;
-  // YouTube does not longer appear to redirect to url with channel name so I only test if we are on a watch url
   if (urlPattern.test(window.location.href)) {
     !active && activate("");
   } else {
@@ -19,13 +15,6 @@ setInterval(() => {
 }, 10);
 
 async function activate(channelName: string) {
-  // if ( true || ["THROModulBVWL"].includes(channelName)) { /// Allow only for select channels
-  //   active = true;
-  // } else {
-  //   active = false;
-  //   return;
-  // }
-
   injectControls();
 
   videoElm = (await waitFor(
