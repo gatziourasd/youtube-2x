@@ -51,8 +51,9 @@ function onRateChanged() {
   updateRateBanner(String(videoElm.playbackRate) + "💨");
 }
 
-let spaceTimeout: null | number = null;
-let spaceSpeedBoost = false;
+let boostTimeout: null | number = null;
+let isSpacePressed = false;
+let isBoosted = false;
 function onKeyDown(event: { key: string }) {
   // console.log(`[YT2X]: keydown: ${event.key}`);
   switch (event.key) {
@@ -63,15 +64,19 @@ function onKeyDown(event: { key: string }) {
       setRate(rate - 0.25);
       break;
     case " ":
-      if (spaceSpeedBoost) return;
-      if (spaceTimeout) {
-        clearInterval(spaceTimeout);
+      if (isSpacePressed) return;
+
+      isSpacePressed = true;
+      if (boostTimeout) {
+        clearInterval(boostTimeout);
       }
-      spaceTimeout = setTimeout(() => {
-        console.log("BOOOOOOOOOOSSSSSTTTT");
-        setRate(2.5);
-        spaceSpeedBoost = true;
-      }, 300);
+      boostTimeout = setTimeout(() => {
+        if (isSpacePressed) {
+          setRate(2.5);
+          isBoosted = true;
+        }
+        boostTimeout = null;
+      }, 350);
       break;
   }
 }
@@ -80,9 +85,10 @@ function onKeyUp(event: { key: string }) {
   // console.log(`[YT2X]: keyup: ${event.key}`);
   switch (event.key) {
     case " ":
-      if (spaceSpeedBoost) {
+      isSpacePressed = false;
+      if (isBoosted) {
         setRate(1.0);
-        spaceSpeedBoost = false;
+        isBoosted = false;
       }
       break;
   }
