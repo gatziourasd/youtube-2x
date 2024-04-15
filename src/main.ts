@@ -1,89 +1,104 @@
-console.log("YouTube-4x started!");
-
-let playbackRate: number | null = null;
-let videoElm: HTMLVideoElement | null = null;
+const urlPattern = /https?:\/\/www\.youtube\.(com|de)\/watch\?v=[0-9A-Za-z_-]*/;
 let active = false;
 
-const urlPattern = /https?:\/\/www\.youtube\.(com|de)\/watch\?v=[0-9A-Za-z_-]*/;
+// Check if on video page and active or deactivate speed controls
+console.log("[YT2X]: Started!");
 
-setInterval(() => {
+setInterval(async () => {
   if (urlPattern.test(window.location.href)) {
-    !active && activate("");
+    !active && (await activate());
   } else {
-    active && deactivate();
+    active && (await deactivate());
   }
 }, 10);
 
-async function activate(channelName: string) {
-  injectControls();
+let videoElm: HTMLVideoElement | null = null;
+async function activate() {
+  if (active) return;
 
-  videoElm = (await waitFor(
+  // Get the video element
+  videoElm = document.querySelector(
     `#movie_player > div.html5-video-container > video`
-  )) as HTMLVideoElement;
-  if (playbackRate === null) {
-    playbackRate = videoElm.playbackRate;
-  } else {
-    videoElm.playbackRate = playbackRate;
-  }
-  videoElm.addEventListener("ratechange", onRateChanged);
+  ) as HTMLVideoElement;
+  if (!videoElm) return;
+  setRate(1.0);
+
+  // Attach event listeners
+  videoElm?.addEventListener("ratechange", onRateChanged);
   document.body.addEventListener("keydown", onKeyDown);
+  document.body.addEventListener("keyup", onKeyUp);
+
+  active = true;
+  console.log("[YT2X]: Activated!");
 }
 
-function deactivate() {
-  active = false;
+async function deactivate() {
+  if (!activate) return;
+
+  // Remove event listeners
   videoElm?.removeEventListener("ratechange", onRateChanged);
   document.body.removeEventListener("keydown", onKeyDown);
-  removeControls();
+  document.body.removeEventListener("keyup", onKeyUp);
+
+  active = false;
+  console.log("[YT2X]: Deactivated!");
 }
 
-function onRateChanged(event?: Event) {
-  console.log("Video Speed: " + videoElm?.playbackRate);
-  console.log("Speed: " + playbackRate);
-  const newRate = videoElm?.playbackRate;
-  if (!newRate || !playbackRate || !videoElm) return;
-  videoElm.playbackRate = playbackRate;
-  updateRateBanner();
+function onRateChanged() {
+  if (!videoElm) return;
+  videoElm.playbackRate = rate;
+  console.log(`[YT2X]: rate: ${rate} | realRate: ${videoElm.playbackRate}`);
+  updateRateBanner(String(videoElm.playbackRate) + "💨");
 }
 
+let spaceTimeout: null | number = null;
+let spaceSpeedBoost = false;
 function onKeyDown(event: { key: string }) {
-  if (playbackRate) {
-    if (event.key === ">" && playbackRate < 5.0) {
-      playbackRate += 0.25;
-      onRateChanged();
-    } else if (event.key === "<" && playbackRate > 0.25) {
-      playbackRate -= 0.25;
-      onRateChanged();
-    }
+  // console.log(`[YT2X]: keydown: ${event.key}`);
+  switch (event.key) {
+    case ">":
+      setRate(rate + 0.25);
+      break;
+    case "<":
+      setRate(rate - 0.25);
+      break;
+    case " ":
+      if (spaceSpeedBoost) return;
+      if (spaceTimeout) {
+        clearInterval(spaceTimeout);
+      }
+      spaceTimeout = setTimeout(() => {
+        console.log("BOOOOOOOOOOSSSSSTTTT");
+        setRate(2.5);
+        spaceSpeedBoost = true;
+      }, 300);
+      break;
   }
 }
 
-function updateRateBanner() {
-  const rateElm = document.querySelector<HTMLDivElement>(
-    `#movie_player > div:nth-child(9) > div.ytp-bezel-text-wrapper > div`
-  ) as HTMLDivElement;
-  if (!rateElm) return;
-  rateElm.innerText = String(playbackRate) + "x";
+function onKeyUp(event: { key: string }) {
+  // console.log(`[YT2X]: keyup: ${event.key}`);
+  switch (event.key) {
+    case " ":
+      if (spaceSpeedBoost) {
+        setRate(1.0);
+        spaceSpeedBoost = false;
+      }
+      break;
+  }
 }
 
-async function injectControls() {}
+let rate = 1.0;
+function setRate(newRate: number) {
+  if (!videoElm) return;
+  rate = newRate > 0.25 ? newRate : 0.25;
+  videoElm.playbackRate = rate;
+}
 
-function removeControls() {}
-function waitFor(selector: string) {
-  return new Promise((resolve) => {
-    const element = document.querySelector(selector) as HTMLElement;
-    if (element) return resolve(element);
-
-    const pageObserver = new MutationObserver(() => {
-      const element = document.querySelector(selector) as HTMLElement;
-      if (element) {
-        resolve(element);
-        pageObserver.disconnect();
-      }
-    });
-
-    pageObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-  });
+function updateRateBanner(value: string) {
+  const rateElm = document.querySelectorAll<HTMLDivElement>(
+    `#movie_player > * > div.ytp-bezel-text-wrapper > div`
+  )[0] as HTMLDivElement;
+  if (!rateElm) return;
+  rateElm.innerText = value;
 }
